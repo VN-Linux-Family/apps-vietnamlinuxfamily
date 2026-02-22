@@ -27,8 +27,11 @@ export default function SubmitApp() {
   const [step, setStep] = useState(0)
   const [form, setForm] = useState({
     name: '',
+    developerName: '',
     shortDesc: '',
+    shortDescEn: '',
     description: '',
+    descriptionEn: '',
     categoryId: '',
     websiteUrl: '',
     downloadUrl: '',
@@ -38,6 +41,7 @@ export default function SubmitApp() {
     packageTypes: [],
     tags: [],
   })
+  const [stepErrors, setStepErrors] = useState([])
   const [tagInput, setTagInput] = useState('')
   const [iconFile, setIconFile] = useState(null)
   const [iconPreview, setIconPreview] = useState(null)
@@ -102,7 +106,33 @@ export default function SubmitApp() {
     setScreenshotPreviews(prev => prev.filter((_, i) => i !== idx))
   }
 
-  const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
+  const update = (key, val) => {
+    setForm(prev => ({ ...prev, [key]: val }))
+    setStepErrors([]) // clear errors on input change
+  }
+
+  const validateStep = (stepIndex) => {
+    const errors = []
+    if (stepIndex === 0) {
+      if (!form.name.trim()) errors.push(locale === 'vi' ? 'Vui lòng nhập tên ứng dụng' : 'App name is required')
+      if (!form.developerName.trim()) errors.push(locale === 'vi' ? 'Vui lòng nhập tên tác giả / nhà phát triển' : 'Developer name is required')
+      if (!form.shortDesc.trim()) errors.push(locale === 'vi' ? 'Vui lòng nhập mô tả ngắn tiếng Việt' : 'Vietnamese short description is required')
+      if (!form.description.trim()) errors.push(locale === 'vi' ? 'Vui lòng nhập mô tả chi tiết tiếng Việt' : 'Vietnamese full description is required')
+      if (!form.categoryId) errors.push(locale === 'vi' ? 'Vui lòng chọn danh mục' : 'Category is required')
+    }
+    // Step 1 (media) and Step 2 (tags) are optional
+    return errors
+  }
+
+  const handleNext = () => {
+    const errors = validateStep(step)
+    if (errors.length > 0) {
+      setStepErrors(errors)
+      return
+    }
+    setStepErrors([])
+    setStep(s => s + 1)
+  }
 
   const togglePkg = (pkg) => {
     update('packageTypes', form.packageTypes.includes(pkg)
@@ -175,14 +205,34 @@ export default function SubmitApp() {
               </div>
 
               <div className="input-group">
-                <label>{t('shortDesc')} *</label>
-                <input className="input" value={form.shortDesc} onChange={e => update('shortDesc', e.target.value)} maxLength={120} placeholder={t('shortDescHint')} />
+                <label>{locale === 'vi' ? 'Tác giả / Nhà phát triển' : 'Developer'} *</label>
+                <input className="input" value={form.developerName} onChange={e => update('developerName', e.target.value)} placeholder={locale === 'vi' ? 'Mozilla Foundation, Valve, KDE...' : 'Mozilla Foundation, Valve, KDE...'} />
+              </div>
+
+              <h3 className="section-label" style={{ marginTop: '1.5rem', marginBottom: '0.5rem', color: 'var(--accent)' }}>{locale === 'vi' ? 'Tiếng Việt' : 'Vietnamese'}</h3>
+
+              <div className="input-group">
+                <label>{locale === 'vi' ? 'Mô tả ngắn (tiếng Việt)' : 'Short Description (Vietnamese)'} *</label>
+                <input className="input" value={form.shortDesc} onChange={e => update('shortDesc', e.target.value)} maxLength={120} placeholder={locale === 'vi' ? 'Mô tả ngắn gọn bằng tiếng Việt' : 'Short description in Vietnamese'} />
                 <span className="char-count">{form.shortDesc.length}/120</span>
               </div>
 
               <div className="input-group">
-                <label>{t('fullDesc')} *</label>
-                <textarea className="input" value={form.description} onChange={e => update('description', e.target.value)} rows={6} placeholder={t('fullDescHint')} />
+                <label>{locale === 'vi' ? 'Mô tả chi tiết (tiếng Việt)' : 'Full Description (Vietnamese)'} *</label>
+                <textarea className="input" value={form.description} onChange={e => update('description', e.target.value)} rows={5} placeholder={locale === 'vi' ? 'Mô tả đầy đủ bằng tiếng Việt...' : 'Full description in Vietnamese...'} />
+              </div>
+
+              <h3 className="section-label" style={{ marginTop: '1.5rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>{locale === 'vi' ? 'Tiếng Anh (không bắt buộc)' : 'English (optional)'}</h3>
+
+              <div className="input-group">
+                <label>{locale === 'vi' ? 'Mô tả ngắn (tiếng Anh)' : 'Short Description (English)'}</label>
+                <input className="input" value={form.shortDescEn} onChange={e => update('shortDescEn', e.target.value)} maxLength={120} placeholder={locale === 'vi' ? 'Short description in English' : 'Short description in English'} />
+                <span className="char-count">{form.shortDescEn.length}/120</span>
+              </div>
+
+              <div className="input-group">
+                <label>{locale === 'vi' ? 'Mô tả chi tiết (tiếng Anh)' : 'Full Description (English)'}</label>
+                <textarea className="input" value={form.descriptionEn} onChange={e => update('descriptionEn', e.target.value)} rows={5} placeholder={locale === 'vi' ? 'Full description in English...' : 'Full description in English...'} />
               </div>
 
               <div className="input-group">
@@ -369,6 +419,7 @@ export default function SubmitApp() {
                   )}
                   <div>
                     <h3>{form.name || (locale === 'vi' ? 'Tên ứng dụng' : 'App Name')}</h3>
+                    {form.developerName && <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{form.developerName}</span>}
                     {cat && (
                       <span className="app-card-category" style={{ background: cat.color }}>
                         {t('category', cat.name_vi, cat.name_en)}
@@ -377,6 +428,7 @@ export default function SubmitApp() {
                   </div>
                 </div>
                 <p className="preview-desc">{form.shortDesc || (locale === 'vi' ? 'Mô tả ngắn...' : 'Short description...')}</p>
+                {form.shortDescEn && <p className="preview-desc" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '-0.5rem' }}>EN: {form.shortDescEn}</p>}
                 {form.packageTypes.length > 0 && (
                   <div className="preview-pkgs">
                     {form.packageTypes.map(pkg => (
@@ -398,7 +450,14 @@ export default function SubmitApp() {
             </div>
           )}
 
-          {/* Error display */}
+          {/* Validation / Error display */}
+          {stepErrors.length > 0 && (
+            <div className="auth-error" style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                {stepErrors.map((err, i) => <li key={i}>{err}</li>)}
+              </ul>
+            </div>
+          )}
           {submitError && (
             <div className="auth-error" style={{ marginBottom: '1rem' }}>
               {submitError}
@@ -414,7 +473,7 @@ export default function SubmitApp() {
             )}
             <div style={{ flex: 1 }} />
             {step < STEPS.length - 1 ? (
-              <button className="btn btn-primary" onClick={() => setStep(s => s + 1)}>
+              <button className="btn btn-primary" onClick={handleNext}>
                 {t('next')} <IconChevronRight />
               </button>
             ) : (
@@ -424,8 +483,11 @@ export default function SubmitApp() {
                 try {
                   const appData = {
                     name: form.name,
+                    developer_name: form.developerName,
                     short_desc: form.shortDesc,
+                    short_desc_en: form.shortDescEn,
                     description: form.description,
+                    description_en: form.descriptionEn,
                     category_id: Number(form.categoryId),
                     website_url: form.websiteUrl,
                     download_url: form.downloadUrl,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useLocale } from '../i18n/useLocale.jsx'
 import { api } from '../lib/api'
@@ -14,13 +14,19 @@ export default function Browse() {
   const [apps, setApps] = useState([])
   const [categories, setCategories] = useState(localCategories)
   const [loading, setLoading] = useState(true)
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
 
   const search = searchParams.get('q') || ''
   const category = searchParams.get('category') || ''
   const tag = searchParams.get('tag') || ''
   const sort = searchParams.get('sort') || 'newest'
-  const page = parseInt(searchParams.get('page') || '1')
+
+  // Track filter changes to reset
+  const filtersKey = `${search}|${category}|${tag}|${sort}`
+  const prevFiltersRef = useRef(filtersKey)
 
   // Fetch categories
   useEffect(() => {
@@ -29,27 +35,51 @@ export default function Browse() {
       .catch(() => { })
   }, [])
 
-  // Fetch apps
+  // Reset when filters change
   useEffect(() => {
-    setLoading(true)
-    api.getApps({ q: search, category, tag, sort, page: String(page), limit: '12' })
+    if (prevFiltersRef.current !== filtersKey) {
+      prevFiltersRef.current = filtersKey
+      setApps([])
+      setPage(1)
+    }
+  }, [filtersKey])
+
+  // Fetch apps (initial or load more)
+  useEffect(() => {
+    const isFirstPage = page === 1
+    if (isFirstPage) setLoading(true)
+    else setLoadingMore(true)
+
+    api.getApps({ q: search, category, tag, sort, page: String(page), limit: '12', lang: locale })
       .then(data => {
-        setApps(data.apps || [])
-        setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 })
+        const newApps = data.apps || []
+        const pagination = data.pagination || { page: 1, totalPages: 1, total: 0 }
+        if (isFirstPage) {
+          setApps(newApps)
+        } else {
+          setApps(prev => [...prev, ...newApps])
+        }
+        setTotal(pagination.total)
+        setHasMore(pagination.page < pagination.totalPages)
       })
       .catch(() => {
-        // Fallback to mock data
-        setApps(sampleApps)
-        setPagination({ page: 1, totalPages: 1, total: sampleApps.length })
+        if (isFirstPage) {
+          setApps(sampleApps)
+          setTotal(sampleApps.length)
+          setHasMore(false)
+        }
       })
-      .finally(() => setLoading(false))
-  }, [search, category, tag, sort, page])
+      .finally(() => {
+        setLoading(false)
+        setLoadingMore(false)
+      })
+  }, [search, category, tag, sort, page, locale])
 
   const updateParam = (key, value) => {
     const params = new URLSearchParams(searchParams)
     if (value) params.set(key, value)
     else params.delete(key)
-    if (key !== 'page') params.delete('page')
+    params.delete('page')
     setSearchParams(params)
   }
 
@@ -104,20 +134,20 @@ export default function Browse() {
           <div className="empty-state"><p>{t('loading')}</p></div>
         ) : apps.length > 0 ? (
           <>
-            <p className="browse-count">{pagination.total} {locale === 'vi' ? 'ứng dụng' : 'apps'}</p>
+            <p className="browse-count">{total} {locale === 'vi' ? 'ứng dụng' : 'apps'}</p>
             <div className="app-grid">{apps.map(app => <AppCard key={app.id} app={app} />)}</div>
 
-            {pagination.totalPages > 1 && (
-              <div className="pagination">
-                {Array.from({ length: pagination.totalPages }, (_, i) => (
-                  <button
-                    key={i + 1}
-                    className={`btn btn-sm ${page === i + 1 ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => updateParam('page', String(i + 1))}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+            {hasMore && (
+              <div className="load-more-wrapper">
+                <button
+                  className="btn btn-secondary load-more-btn"
+                  onClick={() => setPage(p => p + 1)}
+                  disabled={loadingMore}
+                >
+                  {loadingMore
+                    ? (locale === 'vi' ? 'Đang tải...' : 'Loading...')
+                    : (locale === 'vi' ? 'Tải thêm' : 'Load More')}
+                </button>
               </div>
             )}
           </>
@@ -132,3 +162,4 @@ export default function Browse() {
     </div>
   )
 }
+

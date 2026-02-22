@@ -86,7 +86,7 @@ reviews.post('/reviews/:id/helpful', requireAuth, async (c) => {
   const reviewId = c.req.param('id')
   const user = c.get('user')
 
-  const review = await c.env.DB.prepare('SELECT id FROM reviews WHERE id = ?').bind(reviewId).first()
+  const review = await c.env.DB.prepare('SELECT id, app_id FROM reviews WHERE id = ?').bind(reviewId).first()
   if (!review) return c.json({ error: 'Review not found' }, 404)
 
   // Check if already voted
@@ -101,6 +101,9 @@ reviews.post('/reviews/:id/helpful', requireAuth, async (c) => {
     await c.env.DB.prepare(
       'UPDATE reviews SET helpful_count = MAX(0, helpful_count - 1) WHERE id = ?'
     ).bind(reviewId).run()
+    // Invalidate cache
+    const app = await c.env.DB.prepare('SELECT slug FROM apps WHERE id = ?').bind((review as any).app_id).first()
+    if (app) await c.env.CACHE.delete(`app:${(app as any).slug}`)
     return c.json({ message: 'Helpful removed', helpful: false })
   } else {
     // Add vote
@@ -108,6 +111,9 @@ reviews.post('/reviews/:id/helpful', requireAuth, async (c) => {
       .bind(reviewId, user.sub).run()
     await c.env.DB.prepare('UPDATE reviews SET helpful_count = helpful_count + 1 WHERE id = ?')
       .bind(reviewId).run()
+    // Invalidate cache
+    const app = await c.env.DB.prepare('SELECT slug FROM apps WHERE id = ?').bind((review as any).app_id).first()
+    if (app) await c.env.CACHE.delete(`app:${(app as any).slug}`)
     return c.json({ message: 'Helpful added', helpful: true })
   }
 })

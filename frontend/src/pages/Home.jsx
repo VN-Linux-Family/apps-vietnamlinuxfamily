@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useLocale } from '../i18n/useLocale.jsx'
 import { api } from '../lib/api'
@@ -10,41 +10,47 @@ import './Home.css'
 export default function Home() {
   const { t, locale } = useLocale()
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [selectedTags, setSelectedTags] = useState([])
-  const [apps, setApps] = useState(sampleApps)
   const [categories, setCategories] = useState(localCategories)
+  const [homeData, setHomeData] = useState(null)
+  const [searchResults, setSearchResults] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [searching, setSearching] = useState(false)
 
-  // Fetch from API, fall back to mock data
+  // Debounce search input (300ms)
   useEffect(() => {
-    api.getApps({ limit: '50' })
-      .then(data => { if (data.apps?.length) setApps(data.apps) })
+    const timer = setTimeout(() => setDebouncedSearch(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Fetch homepage data
+  useEffect(() => {
+    setLoading(true)
+    api.getHomepage()
+      .then(data => setHomeData(data))
       .catch(() => { })
+      .finally(() => setLoading(false))
     api.getCategories()
       .then(data => { if (data?.length) setCategories(data) })
       .catch(() => { })
   }, [])
 
-  const featured = apps.filter(a => a.is_featured)
-  const trending = [...apps].sort((a, b) => (b.review_count || 0) - (a.review_count || 0)).slice(0, 4)
-  const newest = [...apps].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || '')).slice(0, 4)
-  const topRated = [...apps].sort((a, b) => (b.avg_rating || 0) - (a.avg_rating || 0)).slice(0, 4)
-
-  const filtered = useMemo(() => {
-    let list = apps
-    if (search) {
-      const q = search.toLowerCase()
-      list = list.filter(a =>
-        a.name.toLowerCase().includes(q) ||
-        (a.short_desc || '').toLowerCase().includes(q) ||
-        (a.short_desc_en || '').toLowerCase().includes(q) ||
-        a.tags?.some(t => t.includes(q))
-      )
+  // Fetch search results (debounced)
+  useEffect(() => {
+    if (!debouncedSearch && selectedTags.length === 0) {
+      setSearchResults([])
+      return
     }
-    if (selectedTags.length > 0) {
-      list = list.filter(a => selectedTags.some(tag => a.tags?.includes(tag)))
-    }
-    return list
-  }, [search, selectedTags, apps])
+    setSearching(true)
+    const params = { limit: '50', lang: locale }
+    if (debouncedSearch) params.q = debouncedSearch
+    if (selectedTags.length > 0) params.tag = selectedTags[0]
+    api.getApps(params)
+      .then(data => setSearchResults(data.apps || []))
+      .catch(() => setSearchResults([]))
+      .finally(() => setSearching(false))
+  }, [debouncedSearch, selectedTags, locale])
 
   const toggleTag = (tag) => {
     setSelectedTags(prev =>
@@ -108,10 +114,12 @@ export default function Home() {
         {isSearching ? (
           <section className="section">
             <div className="section-title">
-              <h2>{filtered.length} {t('appFound')}</h2>
+              <h2>{searching ? '...' : `${searchResults.length} ${t('appFound')}`}</h2>
             </div>
-            {filtered.length > 0 ? (
-              <div className="app-grid">{filtered.map(app => <AppCard key={app.id} app={app} />)}</div>
+            {searching ? (
+              <div className="empty-state"><p>{t('loading')}</p></div>
+            ) : searchResults.length > 0 ? (
+              <div className="app-grid">{searchResults.map(app => <AppCard key={app.id} app={app} />)}</div>
             ) : (
               <div className="empty-state">
                 <IconSearch style={{ width: 48, height: 48, color: 'var(--text-muted)' }} />
@@ -120,51 +128,77 @@ export default function Home() {
               </div>
             )}
           </section>
-        ) : (
+        ) : loading ? (
+          <div className="section" style={{ textAlign: 'center', padding: '3rem 0' }}>
+            <p>{t('loading')}</p>
+          </div>
+        ) : homeData ? (
           <>
-            {featured.length > 0 && (
+            {/* Popular Apps */}
+            {homeData.popular?.length > 0 && (
               <section className="section">
                 <div className="section-title">
-                  <h2><IconAward style={{ width: 24, height: 24, color: 'var(--accent)' }} /> {t('featured')}</h2>
-                  <Link to="/browse?sort=featured" className="btn btn-secondary btn-sm">
+                  <h2><IconTrendingUp style={{ width: 24, height: 24, color: 'var(--accent)' }} /> {locale === 'vi' ? 'Phổ biến' : 'Popular Apps'}</h2>
+                  <Link to="/browse?sort=trending" className="btn btn-secondary btn-sm">
                     {t('viewAll')} <IconChevronRight />
                   </Link>
                 </div>
-                <div className="app-grid">{featured.map(app => <AppCard key={app.id} app={app} />)}</div>
+                <div className="app-grid">{homeData.popular.map(app => <AppCard key={app.id} app={app} />)}</div>
               </section>
             )}
 
-            <section className="section">
-              <div className="section-title">
-                <h2><IconTrendingUp style={{ width: 24, height: 24, color: 'var(--accent)' }} /> {t('trending')}</h2>
-                <Link to="/browse?sort=trending" className="btn btn-secondary btn-sm">
-                  {t('viewAll')} <IconChevronRight />
-                </Link>
-              </div>
-              <div className="app-grid">{trending.map(app => <AppCard key={app.id} app={app} />)}</div>
-            </section>
+            {/* Editor's Picks */}
+            {homeData.editors_picks?.length > 0 && (
+              <section className="section">
+                <div className="section-title">
+                  <h2><IconAward style={{ width: 24, height: 24, color: 'var(--accent)' }} /> {locale === 'vi' ? 'Lựa chọn biên tập' : "Editor's Picks"}</h2>
+                  <Link to="/browse" className="btn btn-secondary btn-sm">
+                    {t('viewAll')} <IconChevronRight />
+                  </Link>
+                </div>
+                <div className="app-grid">{homeData.editors_picks.map(app => <AppCard key={app.id} app={app} />)}</div>
+              </section>
+            )}
 
-            <section className="section">
-              <div className="section-title">
-                <h2><IconClock style={{ width: 24, height: 24, color: 'var(--accent)' }} /> {t('newest')}</h2>
-                <Link to="/browse?sort=newest" className="btn btn-secondary btn-sm">
-                  {t('viewAll')} <IconChevronRight />
-                </Link>
-              </div>
-              <div className="app-grid">{newest.map(app => <AppCard key={app.id} app={app} />)}</div>
-            </section>
+            {/* Newest */}
+            {homeData.newest?.length > 0 && (
+              <section className="section">
+                <div className="section-title">
+                  <h2><IconClock style={{ width: 24, height: 24, color: 'var(--accent)' }} /> {locale === 'vi' ? 'Mới cập nhật' : 'Recently Updated'}</h2>
+                  <Link to="/browse?sort=newest" className="btn btn-secondary btn-sm">
+                    {t('viewAll')} <IconChevronRight />
+                  </Link>
+                </div>
+                <div className="app-grid">{homeData.newest.map(app => <AppCard key={app.id} app={app} />)}</div>
+              </section>
+            )}
 
-            <section className="section">
-              <div className="section-title">
-                <h2><IconStar style={{ width: 24, height: 24, color: 'var(--star-filled)' }} /> {t('topRated')}</h2>
-                <Link to="/browse?sort=top-rated" className="btn btn-secondary btn-sm">
-                  {t('viewAll')} <IconChevronRight />
-                </Link>
-              </div>
-              <div className="app-grid">{topRated.map(app => <AppCard key={app.id} app={app} />)}</div>
-            </section>
+            {/* Browse by Category */}
+            {homeData.by_category?.length > 0 && (
+              <>
+                <div className="section-divider">
+                  <h2>{locale === 'vi' ? 'Khám phá theo danh mục' : 'Browse by Category'}</h2>
+                </div>
+                {homeData.by_category.map(({ category, apps: catApps }) => (
+                  <section key={category.id} className="section category-section">
+                    <div className="section-title">
+                      <h2>
+                        <span className="category-dot" style={{ background: category.color }}></span>
+                        {locale === 'vi' ? category.name_vi : category.name_en}
+                      </h2>
+                      <Link to={`/browse?category=${category.slug}`} className="btn btn-secondary btn-sm">
+                        {t('viewAll')} <IconChevronRight />
+                      </Link>
+                    </div>
+                    <div className="app-scroll">
+                      {catApps.map(app => <AppCard key={app.id} app={app} />)}
+                    </div>
+                  </section>
+                ))}
+              </>
+            )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   )

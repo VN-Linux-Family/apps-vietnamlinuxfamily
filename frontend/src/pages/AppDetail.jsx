@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react'
 import { useLocale } from '../i18n/useLocale.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { api } from '../lib/api'
-import sampleApps, { categories as localCategories, sampleReviews } from '../data/apps'
+import sampleApps, { sampleReviews } from '../data/apps'
+import AppCard from '../components/app/AppCard'
+import { marked } from 'marked'
 import StarRating from '../components/app/StarRating'
 import { IconArrowLeft, IconShield, IconExternalLink, IconDownload, IconCode, IconCopy, IconCheck, IconTerminal, IconReply, IconThumbsUp, IconFlag } from '../components/icons'
 import './AppDetail.css'
@@ -18,6 +20,7 @@ export default function AppDetail() {
   const [app, setApp] = useState(null)
   const [loading, setLoading] = useState(true)
   const [reviews, setReviews] = useState([])
+  const [relatedApps, setRelatedApps] = useState([])
 
   // Review form
   const [reviewContent, setReviewContent] = useState('')
@@ -42,11 +45,21 @@ export default function AppDetail() {
       .finally(() => setLoading(false))
   }, [slug])
 
+  // Fetch related apps (same category)
+  useEffect(() => {
+    if (!app?.category_slug) return
+    api.getApps({ category: app.category_slug, limit: '7' })
+      .then(data => {
+        const related = (data.apps || []).filter(a => a.slug !== slug).slice(0, 6)
+        setRelatedApps(related)
+      })
+      .catch(() => { })
+  }, [app?.category_slug, slug])
+
   if (loading) return <div className="container section"><p>{t('loading')}</p></div>
   if (!app) return <div className="container section"><h2>{t('noResults')}</h2></div>
 
-  const cat = localCategories.find(c => c.id === app.category_id) ||
-    { name_vi: app.category_name_vi, name_en: app.category_name_en, color: app.category_color }
+  const cat = app ? { name_vi: app.category_name_vi, name_en: app.category_name_en, color: app.category_color } : null
 
   const copyInstall = () => {
     navigator.clipboard.writeText(app.install_command)
@@ -118,8 +131,11 @@ export default function AppDetail() {
               {!!app.is_verified && <span className="badge badge-verified"><IconShield style={{ width: 14, height: 14 }} /> {t('verified')}</span>}
             </h1>
             <p className="app-detail-desc">
-              {locale === 'vi' ? app.short_desc : (app.short_desc_en || app.short_desc)}
+              {locale === 'vi' ? (app.short_desc || app.short_desc_en) : (app.short_desc_en || app.short_desc)}
             </p>
+            {app.developer_name && (
+              <p className="app-detail-developer">{locale === 'vi' ? 'Nhà phát triển' : 'Developer'}: <strong>{app.developer_name}</strong></p>
+            )}
             <div className="app-detail-meta">
               <StarRating rating={app.avg_rating || 0} />
               <span className="text-muted">({app.review_count || 0} {t('reviews').toLowerCase()})</span>
@@ -186,7 +202,13 @@ export default function AppDetail() {
         {/* Description */}
         <section className="detail-section">
           <h2>{t('description')}</h2>
-          <div className="app-description">{app.description || (locale === 'vi' ? 'Chưa có mô tả chi tiết.' : 'No detailed description yet.')}</div>
+          <div className="app-description" dangerouslySetInnerHTML={{
+            __html: marked.parse(
+              (locale === 'vi'
+                ? (app.description || app.description_en || 'Chưa có mô tả chi tiết.')
+                : (app.description_en || app.description || 'No detailed description yet.'))
+            )
+          }} />
         </section>
 
         {/* Reviews */}
@@ -278,6 +300,16 @@ export default function AppDetail() {
             </p>
           )}
         </section>
+
+        {/* Related Apps */}
+        {relatedApps.length > 0 && (
+          <section className="section related-apps-section">
+            <h2 className="related-apps-title">
+              {locale === 'vi' ? 'Ứng dụng tương tự' : 'Related Apps'}
+            </h2>
+            <div className="app-grid">{relatedApps.map(a => <AppCard key={a.id} app={a} />)}</div>
+          </section>
+        )}
       </div>
     </div>
   )

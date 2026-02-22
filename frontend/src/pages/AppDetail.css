@@ -60,6 +60,16 @@
   margin: 0;
 }
 
+.app-detail-developer {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.app-detail-developer strong {
+  color: var(--text-secondary);
+}
+
 .app-detail-meta {
   display: flex;
   align-items: center;
@@ -160,6 +170,75 @@
 .app-description {
   line-height: 1.7;
   color: var(--text-secondary);
+}
+
+.app-description h1,
+.app-description h2,
+.app-description h3 {
+  color: var(--text-primary);
+  margin: 1.25rem 0 0.5rem;
+}
+
+.app-description h1 {
+  font-size: 1.4rem;
+}
+
+.app-description h2 {
+  font-size: 1.2rem;
+}
+
+.app-description h3 {
+  font-size: 1.05rem;
+}
+
+.app-description p {
+  margin: 0.5rem 0;
+}
+
+.app-description ul,
+.app-description ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.app-description li {
+  margin: 0.25rem 0;
+}
+
+.app-description code {
+  background: var(--bg-secondary);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.app-description pre {
+  background: var(--bg-secondary);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.app-description pre code {
+  background: none;
+  padding: 0;
+}
+
+.app-description a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.app-description strong {
+  color: var(--text-primary);
+}
+
+.app-description blockquote {
+  border-left: 3px solid var(--accent);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  color: var(--text-muted);
 }
 
 /* Reviews */
@@ -302,4 +381,18 @@
   .app-detail-actions {
     justify-content: center;
   }
+}
+
+/* Related Apps */
+.related-apps-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--border-light);
+}
+
+.related-apps-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
 }

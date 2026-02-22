@@ -6,11 +6,82 @@ import type { Env, App } from '../types'
 
 const apps = new Hono<{ Bindings: Env }>()
 
-// --- List / Search / Filter ---
+// Helper: fetch apps with icon
+async function fetchAppsWithIcon(db: any, sql: string, params: unknown[] = []) {
+  const results = await db.prepare(sql).bind(...params).all()
+  return Promise.all((results.results || []).map(async (app: any) => {
+    const [tags, pkgs, media] = await Promise.all([
+      db.prepare('SELECT tag FROM app_tags WHERE app_id = ?').bind(app.id).all(),
+      db.prepare('SELECT package_type FROM app_package_types WHERE app_id = ?').bind(app.id).all(),
+      db.prepare("SELECT image_url FROM app_media WHERE app_id = ? AND type = 'icon' LIMIT 1").bind(app.id).first(),
+    ])
+    return {
+      ...app,
+      tags: (tags.results || []).map((t: any) => t.tag),
+      package_types: (pkgs.results || []).map((p: any) => p.package_type),
+      icon_url: media?.image_url || null,
+    }
+  }))
+}
+
+// --- Homepage Data ---
+apps.get('/homepage', async (c) => {
+  // Try cache
+  const cached = await c.env.CACHE.get('homepage', 'json')
+  if (cached) return c.json(cached)
+
+  const db = c.env.DB
+
+  const baseSel = `SELECT a.*, c.slug as category_slug, c.name_vi as category_name_vi, c.name_en as category_name_en, c.color as category_color,
+    u.display_name as user_display_name
+    FROM apps a JOIN categories c ON a.category_id = c.id JOIN users u ON a.user_id = u.id`
+
+  // 1. Popular: verified apps, random 8
+  const popular = await fetchAppsWithIcon(db,
+    `${baseSel} WHERE a.is_verified = 1 ORDER BY RANDOM() LIMIT 8`)
+
+  // 2. Editor's Picks: random 8 non-verified (different from popular)
+  const popularIds = popular.map((a: any) => a.id)
+  const placeholders = popularIds.map(() => '?').join(',')
+  const editorsPicks = await fetchAppsWithIcon(db,
+    `${baseSel} ${popularIds.length ? `WHERE a.id NOT IN (${placeholders})` : ''} ORDER BY RANDOM() LIMIT 8`,
+    popularIds)
+
+  // 3. Newest: by created_at, exclude already shown
+  const shownIds = [...popularIds, ...editorsPicks.map((a: any) => a.id)]
+  const shownPH = shownIds.map(() => '?').join(',')
+  const newest = await fetchAppsWithIcon(db,
+    `${baseSel} ${shownIds.length ? `WHERE a.id NOT IN (${shownPH})` : ''} ORDER BY a.created_at DESC LIMIT 8`,
+    shownIds)
+
+  // 4. By Category: 4 apps × up to 8 categories
+  const cats = await db.prepare('SELECT * FROM categories ORDER BY id LIMIT 8').all()
+  const allShown = new Set([...shownIds, ...newest.map((a: any) => a.id)])
+  const byCategory = await Promise.all((cats.results || []).map(async (cat: any) => {
+    const catApps = await fetchAppsWithIcon(db,
+      `${baseSel} WHERE a.category_id = ? ORDER BY RANDOM() LIMIT 8`,
+      [cat.id])
+    return {
+      category: cat,
+      apps: catApps,
+    }
+  }))
+
+  // Filter out empty categories
+  const byCategoryFiltered = byCategory.filter(c => c.apps.length > 0)
+
+  const result = { popular, editors_picks: editorsPicks, newest, by_category: byCategoryFiltered }
+
+  // Cache 2 min
+  await c.env.CACHE.put('homepage', JSON.stringify(result), { expirationTtl: 120 })
+
+  return c.json(result)
+})
 apps.get('/', async (c) => {
   const q = c.req.query('q')?.trim()
   const category = c.req.query('category')
   const tag = c.req.query('tag')
+  const lang = c.req.query('lang') || 'en'
   const sort = c.req.query('sort') || 'newest'
   const featured = c.req.query('featured')
   const page = Math.max(1, parseInt(c.req.query('page') || '1'))
@@ -22,8 +93,12 @@ apps.get('/', async (c) => {
   const params: unknown[] = []
 
   if (q) {
-    conditions.push(`(a.name LIKE ? OR a.short_desc LIKE ? OR a.short_desc_en LIKE ?)`)
     const like = `%${q}%`
+    if (lang === 'vi') {
+      conditions.push(`(a.name LIKE ? OR a.short_desc LIKE ? OR a.description LIKE ?)`)
+    } else {
+      conditions.push(`(a.name LIKE ? OR a.short_desc_en LIKE ? OR a.description_en LIKE ?)`)
+    }
     params.push(like, like, like)
   }
   if (category) {

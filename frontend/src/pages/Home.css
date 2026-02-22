@@ -89,6 +89,41 @@
   font-size: 0.9rem;
 }
 
+/* Section divider */
+.section-divider {
+  text-align: center;
+  padding: 2.5rem 0 0.5rem;
+  border-top: 2px solid var(--border-light);
+  margin-top: 1rem;
+}
+
+.section-divider h2 {
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+/* Category section */
+.category-section {
+  padding: 1rem 0 0.5rem;
+}
+
+.category-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+/* Category app grid (wrapping, no horizontal scroll) */
+.app-scroll {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+  padding: 0.5rem 0 1rem;
+}
+
 @media (max-width: 768px) {
   .hero {
     padding: 2.5rem 0 2rem;
@@ -100,5 +135,9 @@
 
   .hero-subtitle {
     font-size: 0.95rem;
+  }
+
+  .section-divider h2 {
+    font-size: 1.25rem;
   }
 }

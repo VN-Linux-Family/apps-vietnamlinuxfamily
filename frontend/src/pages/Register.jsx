@@ -50,7 +50,7 @@ export default function Register() {
     return (
       <div className="auth-page">
         <div className="auth-card card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <h2 style={{ color: 'var(--accent)' }}>✅ {locale === 'vi' ? 'Đăng ký thành công!' : 'Registration successful!'}</h2>
+          <h2 style={{ color: 'var(--accent)' }}>{locale === 'vi' ? 'Đăng ký thành công!' : 'Registration successful!'}</h2>
           <p>{locale === 'vi' ? 'Kiểm tra email để xác thực tài khoản.' : 'Check your email to verify your account.'}</p>
         </div>
       </div>

@@ -18,8 +18,7 @@ export default function ResetPassword() {
     return (
       <div className="auth-page">
         <div className="auth-card card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <h2>❌</h2>
-          <h3>{locale === 'vi' ? 'Link không hợp lệ' : 'Invalid reset link'}</h3>
+          <h2>{locale === 'vi' ? 'Link không hợp lệ' : 'Invalid reset link'}</h2>
           <Link to="/forgot-password" className="btn btn-primary" style={{ marginTop: '1rem' }}>
             {locale === 'vi' ? 'Yêu cầu link mới' : 'Request new link'}
           </Link>
@@ -54,8 +53,7 @@ export default function ResetPassword() {
     return (
       <div className="auth-page">
         <div className="auth-card card" style={{ textAlign: 'center', padding: '3rem' }}>
-          <h2 style={{ color: 'var(--accent)' }}>✅</h2>
-          <h3>{locale === 'vi' ? 'Đặt lại mật khẩu thành công!' : 'Password reset successful!'}</h3>
+          <h2 style={{ color: 'var(--accent)' }}>{locale === 'vi' ? 'Đặt lại mật khẩu thành công!' : 'Password reset successful!'}</h2>
           <Link to="/login" className="btn btn-primary" style={{ marginTop: '1rem' }}>{t('login')}</Link>
         </div>
       </div>

@@ -46,7 +46,7 @@ export default function AppCard({ app }) {
         <div className="app-card-meta">
           <h3 className="app-card-name">
             {app.name}
-            {app.is_verified && (
+            {!!app.is_verified && (
               <span className="badge badge-verified" title={t('verified')}>
                 <IconShield style={{ width: 12, height: 12 }} />
               </span>

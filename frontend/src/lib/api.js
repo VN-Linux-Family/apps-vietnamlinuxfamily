@@ -61,6 +61,8 @@ export const api = {
 
   getApp: (slug) => request(`/apps/${slug}`),
 
+  getHomepage: () => request('/apps/homepage'),
+
   createApp: (data) =>
     request('/apps', { method: 'POST', body: JSON.stringify(data) }),
 
