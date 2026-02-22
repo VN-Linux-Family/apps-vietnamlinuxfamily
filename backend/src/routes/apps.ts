@@ -6,22 +6,38 @@ import type { Env, App } from '../types'
 
 const apps = new Hono<{ Bindings: Env }>()
 
-// Helper: fetch apps with icon
+// Helper: enrich apps with tags, packages, icon in batch (eliminates N+1)
+async function enrichApps(db: any, apps: any[]) {
+  if (!apps.length) return apps
+  const ids = apps.map((a: any) => a.id)
+  const ph = ids.map(() => '?').join(',')
+
+  // 3 batch queries instead of 3*N queries
+  const [tagsRes, pkgsRes, iconsRes] = await Promise.all([
+    db.prepare(`SELECT app_id, GROUP_CONCAT(tag) as tags FROM app_tags WHERE app_id IN (${ph}) GROUP BY app_id`).bind(...ids).all(),
+    db.prepare(`SELECT app_id, GROUP_CONCAT(package_type) as pkgs FROM app_package_types WHERE app_id IN (${ph}) GROUP BY app_id`).bind(...ids).all(),
+    db.prepare(`SELECT app_id, image_url FROM app_media WHERE app_id IN (${ph}) AND type = 'icon'`).bind(...ids).all(),
+  ])
+
+  const tagsMap: Record<string, string[]> = {}
+  for (const r of (tagsRes.results || [])) tagsMap[r.app_id] = r.tags ? r.tags.split(',') : []
+  const pkgsMap: Record<string, string[]> = {}
+  for (const r of (pkgsRes.results || [])) pkgsMap[r.app_id] = r.pkgs ? r.pkgs.split(',') : []
+  const iconMap: Record<string, string> = {}
+  for (const r of (iconsRes.results || [])) iconMap[r.app_id] = r.image_url
+
+  return apps.map((app: any) => ({
+    ...app,
+    tags: tagsMap[app.id] || [],
+    package_types: pkgsMap[app.id] || [],
+    icon_url: iconMap[app.id] || null,
+  }))
+}
+
+// Helper: fetch + enrich in one call
 async function fetchAppsWithIcon(db: any, sql: string, params: unknown[] = []) {
   const results = await db.prepare(sql).bind(...params).all()
-  return Promise.all((results.results || []).map(async (app: any) => {
-    const [tags, pkgs, media] = await Promise.all([
-      db.prepare('SELECT tag FROM app_tags WHERE app_id = ?').bind(app.id).all(),
-      db.prepare('SELECT package_type FROM app_package_types WHERE app_id = ?').bind(app.id).all(),
-      db.prepare("SELECT image_url FROM app_media WHERE app_id = ? AND type = 'icon' LIMIT 1").bind(app.id).first(),
-    ])
-    return {
-      ...app,
-      tags: (tags.results || []).map((t: any) => t.tag),
-      package_types: (pkgs.results || []).map((p: any) => p.package_type),
-      icon_url: media?.image_url || null,
-    }
-  }))
+  return enrichApps(db, results.results || [])
 }
 
 // --- Homepage Data ---
@@ -72,8 +88,8 @@ apps.get('/homepage', async (c) => {
 
   const result = { popular, editors_picks: editorsPicks, newest, by_category: byCategoryFiltered }
 
-  // Cache 2 min
-  await c.env.CACHE.put('homepage', JSON.stringify(result), { expirationTtl: 120 })
+  // Cache 10 min
+  await c.env.CACHE.put('homepage', JSON.stringify(result), { expirationTtl: 600 })
 
   return c.json(result)
 })
@@ -87,6 +103,13 @@ apps.get('/', async (c) => {
   const page = Math.max(1, parseInt(c.req.query('page') || '1'))
   const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') || '12')))
   const offset = (page - 1) * limit
+
+  // Try cache for non-search requests
+  const cacheKey = `apps:${q || ''}:${category || ''}:${tag || ''}:${sort}:${page}:${limit}`
+  if (!q) {
+    const cached = await c.env.CACHE.get(cacheKey, 'json')
+    if (cached) return c.json(cached)
+  }
 
   // Build query
   const conditions: string[] = []
@@ -141,25 +164,20 @@ apps.get('/', async (c) => {
   `
   const results = await c.env.DB.prepare(sql).bind(...params, limit, offset).all()
 
-  // Fetch tags and package types for each app
-  const appList = await Promise.all((results.results || []).map(async (app: any) => {
-    const [tags, pkgs, media] = await Promise.all([
-      c.env.DB.prepare('SELECT tag FROM app_tags WHERE app_id = ?').bind(app.id).all(),
-      c.env.DB.prepare('SELECT package_type FROM app_package_types WHERE app_id = ?').bind(app.id).all(),
-      c.env.DB.prepare("SELECT image_url FROM app_media WHERE app_id = ? AND type = 'icon' LIMIT 1").bind(app.id).first(),
-    ])
-    return {
-      ...app,
-      tags: (tags.results || []).map((t: any) => t.tag),
-      package_types: (pkgs.results || []).map((p: any) => p.package_type),
-      icon_url: media?.image_url || null,
-    }
-  }))
+  // Enrich apps with tags, packages, icons in batch
+  const appList = await enrichApps(c.env.DB, results.results || [])
 
-  return c.json({
+  const response = {
     apps: appList,
     pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
-  })
+  }
+
+  // Cache non-search results for 1 min
+  if (!q) {
+    await c.env.CACHE.put(cacheKey, JSON.stringify(response), { expirationTtl: 60 })
+  }
+
+  return c.json(response)
 })
 
 // --- App Detail ---

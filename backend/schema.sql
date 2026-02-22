@@ -55,6 +55,8 @@ CREATE INDEX IF NOT EXISTS idx_apps_slug ON apps(slug);
 CREATE INDEX IF NOT EXISTS idx_apps_category ON apps(category_id);
 CREATE INDEX IF NOT EXISTS idx_apps_user ON apps(user_id);
 CREATE INDEX IF NOT EXISTS idx_apps_featured ON apps(is_featured) WHERE is_featured = 1;
+CREATE INDEX IF NOT EXISTS idx_apps_name ON apps(name);
+CREATE INDEX IF NOT EXISTS idx_apps_created ON apps(created_at DESC);
 
 -- App Package Types
 CREATE TABLE IF NOT EXISTS app_package_types (
