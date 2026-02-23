@@ -3,9 +3,21 @@ import { Link } from 'react-router-dom'
 import { useLocale } from '../i18n/useLocale.jsx'
 import { api } from '../lib/api'
 import sampleApps, { categories as localCategories, allTags } from '../data/apps'
+import { alternatives } from '../data/alternatives'
 import AppCard from '../components/app/AppCard'
 import { IconSearch, IconTrendingUp, IconAward, IconClock, IconStar, IconChevronRight } from '../components/icons'
 import './Home.css'
+
+const ALT_PICKS = ['Photoshop', 'Microsoft Office', 'Chrome', 'Premiere Pro', 'Notepad++', 'Discord', 'Steam', 'AutoCAD']
+
+function transformApp(app) {
+  if (!app) return null
+  if (!app.icon_url && app.media) {
+    const icon = app.media.find(m => m.type === 'icon')
+    app.icon_url = icon?.image_url || null
+  }
+  return app
+}
 
 export default function Home() {
   const { t, locale } = useLocale()
@@ -17,6 +29,9 @@ export default function Home() {
   const [searchResults, setSearchResults] = useState([])
   const [loading, setLoading] = useState(true)
   const [searching, setSearching] = useState(false)
+  const [altPick, setAltPick] = useState('Photoshop')
+  const [altApps, setAltApps] = useState([])
+  const [altLoading, setAltLoading] = useState(false)
 
   // Debounce search input (300ms)
   useEffect(() => {
@@ -35,6 +50,18 @@ export default function Home() {
       .then(data => { if (data?.length) setCategories(data) })
       .catch(() => { })
   }, [])
+
+  // Fetch alternative preview apps
+  useEffect(() => {
+    if (!altPick || !alternatives[altPick]) return
+    setAltLoading(true)
+    const slugs = alternatives[altPick].apps.slice(0, 4)
+    Promise.all(slugs.map(slug => api.getApp(slug).catch(() => null)))
+      .then(results => {
+        setAltApps(results.map(transformApp).filter(Boolean))
+        setAltLoading(false)
+      })
+  }, [altPick])
 
   // Fetch search results (debounced)
   useEffect(() => {
@@ -134,6 +161,47 @@ export default function Home() {
           </div>
         ) : homeData ? (
           <>
+            {/* Switch from Windows/Mac */}
+            <section className="section alt-section-home">
+              <div className="section-title">
+                <h2>{locale === 'vi' ? 'Chuyển từ Windows?' : 'Switching from Windows?'}</h2>
+                <Link to="/alternatives" className="btn btn-secondary btn-sm">
+                  {locale === 'vi' ? 'Xem tất cả' : 'View all'} <IconChevronRight />
+                </Link>
+              </div>
+              <p className="alt-home-desc">{locale === 'vi'
+                ? 'Tìm phần mềm Linux thay thế cho phần mềm Windows/Mac bạn đang dùng'
+                : 'Find Linux alternatives for the Windows/Mac software you use'
+              }</p>
+              <div className="alt-home-chips">
+                {ALT_PICKS.map(name => (
+                  <button key={name}
+                    className={`alt-home-chip${altPick === name ? ' active' : ''}`}
+                    onClick={() => setAltPick(name)}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
+              {altPick && (
+                <div className="alt-home-preview">
+                  <div className="alt-preview-header">
+                    <span className="alt-preview-label">
+                      {locale === 'vi' ? 'Thay thế cho' : 'Alternatives for'} <strong>{altPick}</strong>:
+                    </span>
+                    <Link to={`/alternatives?q=${encodeURIComponent(altPick)}`} className="alt-preview-more">
+                      {locale === 'vi' ? 'Xem thêm' : 'See more'} →
+                    </Link>
+                  </div>
+                  {altLoading ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{locale === 'vi' ? 'Đang tải...' : 'Loading...'}</p>
+                  ) : (
+                    <div className="app-grid">{altApps.slice(0, 4).map(app => <AppCard key={app.id || app.slug} app={app} />)}</div>
+                  )}
+                </div>
+              )}
+            </section>
+
             {/* Popular Apps */}
             {homeData.popular?.length > 0 && (
               <section className="section">

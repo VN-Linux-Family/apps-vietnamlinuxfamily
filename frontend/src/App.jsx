@@ -9,12 +9,14 @@ import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import Profile from './pages/Profile'
+import Alternatives from './pages/Alternatives'
 
 export default function App() {
   return (
     <Layout>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/alternatives" element={<Alternatives />} />
         <Route path="/browse" element={<Browse />} />
         <Route path="/app/:slug" element={<AppDetail />} />
         <Route path="/submit" element={<SubmitApp />} />
