@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS apps (
   download_url TEXT,
   source_code_url TEXT,
   install_command TEXT,
+  flatpak_id TEXT, -- Flathub app id (org.gimp.GIMP), NULL if not on Flathub; added by migrations/0001
   license TEXT,
   is_verified INTEGER NOT NULL DEFAULT 0,
   is_featured INTEGER NOT NULL DEFAULT 0,

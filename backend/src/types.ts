@@ -47,6 +47,7 @@ export interface App {
   download_url: string | null
   source_code_url: string | null
   install_command: string | null
+  flatpak_id: string | null // Flathub app id, e.g. org.gimp.GIMP
   license: string | null
   is_verified: number
   is_featured: number

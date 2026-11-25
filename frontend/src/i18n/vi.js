@@ -48,6 +48,22 @@ const vi = {
   submittedBy: 'Đăng bởi',
   verified: 'Đã xác minh',
   editApp: 'Chỉnh sửa',
+  flathubPage: 'Trang Flathub',
+
+  // Install box
+  install: 'Cài đặt',
+  installOnCaramos: 'Cài trên CaramOS',
+  usingCaramos: 'Đang dùng CaramOS?',
+  otherLinux: 'Linux khác:',
+  terminalSteps: 'Mở Terminal, dán lệnh này rồi nhấn Enter. Lệnh sẽ cài Flatpak và kho Flathub nếu máy chưa có.',
+  curlMissing: 'Máy báo thiếu curl thì chạy {command} trước.',
+  caramosHintBelow: 'Không thấy App Center mở? Hãy cập nhật CaramOS lên bản mới nhất, hoặc dùng lệnh bên dưới.',
+  caramosHintAbove: 'Không thấy App Center mở? Hãy cập nhật CaramOS lên bản mới nhất, hoặc dùng lệnh ở trên.',
+  downloadFlatpakref: 'Tải tệp .flatpakref',
+  flatpakrefHint: 'mở bằng trình quản lý phần mềm',
+  viewScript: 'Xem nội dung cai.sh',
+  snapNotOnMint: 'Linux Mint và CaramOS không dùng Snap, nên lệnh này sẽ báo "snap: command not found".',
+  snapUseDownload: 'Hãy tải ứng dụng ở trang tải về.',
 
   // Reviews
   reviews: 'Đánh giá',
@@ -78,6 +94,9 @@ const vi = {
   selectCategory: 'Chọn danh mục',
   tags: 'Tags',
   tagsHint: 'Nhập tag và nhấn Enter (tối đa 10)',
+  flatpakIdField: 'ID trên Flathub',
+  flatpakIdHint: 'Không bắt buộc. Là phần cuối địa chỉ trang ứng dụng trên flathub.org, ví dụ org.gimp.GIMP. Có ID này, trang ứng dụng sẽ có nút cài.',
+  flatpakIdInvalid: 'ID trên Flathub không hợp lệ (ví dụ đúng: org.gimp.GIMP)',
   iconUpload: 'Icon ứng dụng',
   screenshotUpload: 'Ảnh chụp màn hình',
   dragOrClick: 'Kéo thả hoặc nhấn để tải lên',

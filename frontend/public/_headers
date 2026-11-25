@@ -1,0 +1,6 @@
+# Cloudflare Pages response headers.
+# cai.sh is piped into bash, and the app page links to it so people can read it
+# first: serve it as plain text so the browser shows it instead of downloading it.
+/cai.sh
+  Content-Type: text/plain; charset=utf-8
+  X-Content-Type-Options: nosniff

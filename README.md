@@ -68,6 +68,31 @@ yarn deploy        # Deploy Worker
 yarn db:migrate    # Apply schema to remote D1
 ```
 
+### Database changes
+
+`backend/schema.sql` is the full schema for new databases (`yarn db:init`). An existing
+database gets each file in `backend/migrations/` once, in order, before the Worker
+that needs it is deployed:
+
+```bash
+cd backend
+npx wrangler d1 execute vnlf-db --remote --file=migrations/0001_add_apps_flatpak_id.sql
+```
+
+### Flathub ids (install box)
+
+`apps.flatpak_id` holds the Flathub app id (`org.gimp.GIMP`). With it, the app page shows
+"Cài trên CaramOS" (`caramos-app://install/<id>`, App Center releases after 0.3.1), the command
+`curl -fsSL https://apps.vietnamlinuxfamily.net/cai.sh | bash -s <id>`
+(`frontend/public/cai.sh`) and a `.flatpakref` link. To propose ids for the apps
+already listed (reads the public API and Flathub, writes files for review only):
+
+```bash
+cd backend
+node tools/match-flatpak-ids.mjs      # writes tools/flatpak-ids/*.sql, *.csv, *.md
+npx wrangler d1 execute vnlf-db --remote --file=tools/flatpak-ids/flatpak-ids.sql   # after review
+```
+
 ### Frontend (Cloudflare Pages)
 
 ```bash

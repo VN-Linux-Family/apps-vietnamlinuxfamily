@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useLocale } from '../i18n/useLocale.jsx'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { api } from '../lib/api'
+import { isValidFlatpakId, normalizeFlatpakId } from '../lib/install'
 import { categories as localCategories, allTags } from '../data/apps'
 import { IconPlus, IconX, IconCheck, IconArrowLeft, IconChevronRight } from '../components/icons'
 import './SubmitApp.css'
@@ -37,6 +38,7 @@ export default function SubmitApp() {
     downloadUrl: '',
     sourceCodeUrl: '',
     installCommand: '',
+    flatpakId: '',
     license: '',
     packageTypes: [],
     tags: [],
@@ -119,6 +121,8 @@ export default function SubmitApp() {
       if (!form.shortDesc.trim()) errors.push(locale === 'vi' ? 'Vui lòng nhập mô tả ngắn tiếng Việt' : 'Vietnamese short description is required')
       if (!form.description.trim()) errors.push(locale === 'vi' ? 'Vui lòng nhập mô tả chi tiết tiếng Việt' : 'Vietnamese full description is required')
       if (!form.categoryId) errors.push(locale === 'vi' ? 'Vui lòng chọn danh mục' : 'Category is required')
+      const flatpakId = normalizeFlatpakId(form.flatpakId)
+      if (flatpakId && !isValidFlatpakId(flatpakId)) errors.push(t('flatpakIdInvalid'))
     }
     // Step 1 (media) and Step 2 (tags) are optional
     return errors
@@ -272,6 +276,23 @@ export default function SubmitApp() {
               <div className="input-group">
                 <label>{t('installCommand')}</label>
                 <input className="input" value={form.installCommand} onChange={e => update('installCommand', e.target.value)} placeholder="sudo apt install ..." style={{ fontFamily: 'monospace' }} />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="flatpak-id">{t('flatpakIdField')}</label>
+                <input
+                  id="flatpak-id"
+                  className="input"
+                  value={form.flatpakId}
+                  onChange={e => update('flatpakId', e.target.value)}
+                  onBlur={e => update('flatpakId', normalizeFlatpakId(e.target.value))}
+                  placeholder="org.gimp.GIMP"
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  style={{ fontFamily: 'monospace' }}
+                />
+                <span className="upload-hint">{t('flatpakIdHint')}</span>
               </div>
 
               <div className="input-group">
@@ -446,6 +467,11 @@ export default function SubmitApp() {
                     <code>{form.installCommand}</code>
                   </div>
                 )}
+                {form.flatpakId && (
+                  <p className="preview-desc" style={{ fontSize: '0.85rem', marginTop: '0.75rem' }}>
+                    {t('flatpakIdField')}: <code>{form.flatpakId}</code>
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -493,6 +519,7 @@ export default function SubmitApp() {
                     download_url: form.downloadUrl,
                     source_code_url: form.sourceCodeUrl,
                     install_command: form.installCommand,
+                    flatpak_id: normalizeFlatpakId(form.flatpakId),
                     license: form.license,
                     package_types: form.packageTypes,
                     tags: form.tags,

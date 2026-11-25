@@ -48,6 +48,22 @@ const en = {
   submittedBy: 'Submitted by',
   verified: 'Verified',
   editApp: 'Edit',
+  flathubPage: 'Flathub page',
+
+  // Install box
+  install: 'Install',
+  installOnCaramos: 'Install on CaramOS',
+  usingCaramos: 'Using CaramOS?',
+  otherLinux: 'Other Linux:',
+  terminalSteps: 'Open a terminal, paste this command and press Enter. It sets up Flatpak and Flathub first if they are missing.',
+  curlMissing: 'If it says curl is missing, run {command} first.',
+  caramosHintBelow: 'App Center did not open? Update CaramOS to the latest version, or use the command below.',
+  caramosHintAbove: 'App Center did not open? Update CaramOS to the latest version, or use the command above.',
+  downloadFlatpakref: 'Download the .flatpakref file',
+  flatpakrefHint: 'opens in your software manager',
+  viewScript: 'Read cai.sh',
+  snapNotOnMint: 'Linux Mint and CaramOS do not use Snap, so this command fails there with "snap: command not found".',
+  snapUseDownload: 'Get the app from its download page instead.',
 
   // Reviews
   reviews: 'Reviews',
@@ -78,6 +94,9 @@ const en = {
   selectCategory: 'Select category',
   tags: 'Tags',
   tagsHint: 'Type a tag and press Enter (max 10)',
+  flatpakIdField: 'Flathub ID',
+  flatpakIdHint: 'Optional. The last part of the app\'s flathub.org address, e.g. org.gimp.GIMP. With it, the app page gets an install button.',
+  flatpakIdInvalid: 'Not a valid Flathub ID (example: org.gimp.GIMP)',
   iconUpload: 'App Icon',
   screenshotUpload: 'Screenshots',
   dragOrClick: 'Drag & drop or click to upload',

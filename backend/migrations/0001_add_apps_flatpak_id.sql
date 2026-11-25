@@ -1,0 +1,13 @@
+-- 0001: apps.flatpak_id, the Flathub app id (e.g. org.gimp.GIMP).
+--
+-- The app page uses it for the install box: caramos-app://install/<id>
+-- (CaramOS App Center), the cai.sh command for other distributions and the
+-- .flatpakref download. NULL means the app is not on Flathub; the page then
+-- shows install_command / download_url as before.
+--
+-- Run once on databases created before this column existed (the remote
+-- vnlf-db), BEFORE deploying the Worker that writes the column:
+--   npx wrangler d1 execute vnlf-db --remote --file=migrations/0001_add_apps_flatpak_id.sql
+-- New databases get the column from schema.sql (yarn db:init). Running this
+-- file there fails with "duplicate column name: flatpak_id", which is harmless.
+ALTER TABLE apps ADD COLUMN flatpak_id TEXT;

@@ -5,9 +5,11 @@ import { useAuth } from '../hooks/useAuth.jsx'
 import { api } from '../lib/api'
 import sampleApps, { sampleReviews } from '../data/apps'
 import AppCard from '../components/app/AppCard'
+import InstallBox from '../components/app/InstallBox'
 import { marked } from 'marked'
 import StarRating from '../components/app/StarRating'
 import { IconArrowLeft, IconShield, IconExternalLink, IconDownload, IconCode, IconCopy, IconCheck, IconTerminal, IconReply, IconThumbsUp, IconFlag } from '../components/icons'
+import { isValidFlatpakId, isFlathubUrl, usesSnap } from '../lib/install'
 import './AppDetail.css'
 
 export default function AppDetail() {
@@ -107,6 +109,12 @@ export default function AppDetail() {
   const iconMedia = app.media?.find(m => m.type === 'icon')
   const screenshots = app.media?.filter(m => m.type === 'screenshot') || []
 
+  // On Flathub: the install box replaces the plain install command.
+  const flatpakId = isValidFlatpakId(app.flatpak_id) ? app.flatpak_id : null
+  // Not on Flathub and the command is "snap install …": say it fails on Mint/CaramOS.
+  const snapOnly = !flatpakId && usesSnap(app.install_command)
+  const snapAltUrl = [app.download_url, app.website_url].find(u => u && !/snapcraft\.io/.test(u))
+
   const PKG_COLORS = {
     deb: 'var(--pkg-deb)', flatpak: 'var(--pkg-flatpak)',
     snap: 'var(--pkg-snap)', appimage: 'var(--pkg-appimage)', source: 'var(--pkg-source)',
@@ -153,10 +161,14 @@ export default function AppDetail() {
           </div>
         </div>
 
+        {flatpakId && <InstallBox key={flatpakId} flatpakId={flatpakId} />}
+
         <div className="app-detail-actions">
           {app.download_url && (
-            <a href={app.download_url} target="_blank" rel="noopener" className="btn btn-primary btn-lg">
-              <IconDownload /> {t('download')}
+            <a href={app.download_url} target="_blank" rel="noopener" className={flatpakId ? 'btn btn-secondary' : 'btn btn-primary btn-lg'}>
+              {isFlathubUrl(app.download_url)
+                ? <><IconExternalLink /> {t('flathubPage')}</>
+                : <><IconDownload /> {t('download')}</>}
             </a>
           )}
           {app.website_url && (
@@ -183,8 +195,8 @@ export default function AppDetail() {
           </section>
         )}
 
-        {/* Install Command */}
-        {app.install_command && (
+        {/* Install Command (apps that are not on Flathub) */}
+        {!flatpakId && app.install_command && (
           <div className="install-block">
             <div className="install-header">
               <IconTerminal style={{ width: 18, height: 18 }} />
@@ -196,6 +208,12 @@ export default function AppDetail() {
                 {copied ? <><IconCheck /> {t('copied')}</> : <><IconCopy /> {t('copyCommand')}</>}
               </button>
             </div>
+            {snapOnly && (
+              <p className="install-snap-note">
+                {t('snapNotOnMint')}
+                {snapAltUrl && <> <a href={snapAltUrl} target="_blank" rel="noopener">{t('snapUseDownload')}</a></>}
+              </p>
+            )}
           </div>
         )}
 

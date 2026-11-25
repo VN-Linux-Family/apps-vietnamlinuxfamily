@@ -237,16 +237,24 @@ apps.get('/:slug', async (c) => {
 })
 
 // --- Create App ---
+// Flathub app id, same rule as flatpak itself and frontend/public/cai.sh:
+// 3 or more dot-separated parts of A-Z a-z 0-9 _, no part starts with a digit,
+// "-" only in the last part, at most 255 characters. Example: org.gimp.GIMP
+const FLATPAK_ID_RE = /^(?=.{1,255}$)[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)+\.[A-Za-z_][A-Za-z0-9_-]*$/
+
 const createAppSchema = z.object({
   name: z.string().min(1).max(100),
+  developer_name: z.string().max(100).optional(),
   short_desc: z.string().min(1).max(200),
   short_desc_en: z.string().max(200).optional(),
   description: z.string().max(10000).optional(),
+  description_en: z.string().max(10000).optional(),
   category_id: z.number().int().positive(),
   website_url: z.string().url().optional().or(z.literal('')),
   download_url: z.string().url().optional().or(z.literal('')),
   source_code_url: z.string().url().optional().or(z.literal('')),
   install_command: z.string().max(500).optional(),
+  flatpak_id: z.string().trim().regex(FLATPAK_ID_RE, 'Not a Flathub app id (example: org.gimp.GIMP)').optional().or(z.literal('')),
   license: z.string().max(50).optional(),
   package_types: z.array(z.enum(['deb', 'flatpak', 'snap', 'appimage', 'source'])).optional(),
   tags: z.array(z.string().max(30)).max(10).optional(),
@@ -272,14 +280,15 @@ apps.post('/', requireAuth, async (c) => {
   const id = crypto.randomUUID().replace(/-/g, '')
 
   await c.env.DB.prepare(`
-    INSERT INTO apps (id, slug, name, short_desc, short_desc_en, description,
+    INSERT INTO apps (id, slug, name, developer_name, short_desc, short_desc_en, description, description_en,
                       category_id, website_url, download_url, source_code_url,
-                      install_command, license, user_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      install_command, flatpak_id, license, user_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    id, slug, data.name, data.short_desc, data.short_desc_en || null, data.description || null,
+    id, slug, data.name, data.developer_name || null, data.short_desc, data.short_desc_en || null,
+    data.description || null, data.description_en || null,
     data.category_id, data.website_url || null, data.download_url || null, data.source_code_url || null,
-    data.install_command || null, data.license || null, user.sub
+    data.install_command || null, data.flatpak_id || null, data.license || null, user.sub
   ).run()
 
   // Insert package types
@@ -320,8 +329,8 @@ apps.put('/:id', requireAuth, async (c) => {
   // Build SET clause dynamically
   const sets: string[] = []
   const vals: unknown[] = []
-  const fields = ['name', 'short_desc', 'short_desc_en', 'description', 'category_id',
-    'website_url', 'download_url', 'source_code_url', 'install_command', 'license'] as const
+  const fields = ['name', 'developer_name', 'short_desc', 'short_desc_en', 'description', 'description_en', 'category_id',
+    'website_url', 'download_url', 'source_code_url', 'install_command', 'flatpak_id', 'license'] as const
 
   for (const f of fields) {
     if (data[f] !== undefined) {

@@ -5,7 +5,11 @@ import App from './App'
 import { LocaleProvider } from './i18n/useLocale.jsx'
 import { AuthProvider } from './hooks/useAuth.jsx'
 import { ThemeProvider } from './hooks/useTheme.jsx'
+import { rememberCaramosVisit } from './lib/install'
 import './index.css'
+
+// ?from=caramos (the CaramOS App Center's link): remember it for the install box.
+rememberCaramosVisit()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
