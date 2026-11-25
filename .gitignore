@@ -28,6 +28,8 @@ Thumbs.db
 .gemini/
 
 data/
+# The frontend's built-in data (sample apps, the alternatives list) is source: without it a fresh clone cannot build.
+!frontend/src/data/
 
 .agents/
 
